@@ -95,7 +95,7 @@ class RecomBasket:
         self.read_gzip(file_path)
         print(self.data.head())
         """
-        df = pd.read_csv(file_path, compression="gzip",sep= ";",encoding="utf-8",nrows=20 ,
+        df = pd.read_csv(file_path, compression="gzip",sep= ";",encoding="utf-8",nrows=5000 ,
                  usecols=[
                         "PartDesc1",
                         "PartDesc2",
