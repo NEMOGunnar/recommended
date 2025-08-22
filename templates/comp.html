@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Part Comparison System</title>
+
+    <!-- Bootstrap 5 Stylesheet -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    
+    <!-- Font Awesome (optional) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+</head>
+<body class="container mt-4">
+
+<!-- 🔹 Bootstrap Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Part System</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/recommendation">Recommendation System</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">Part Comparison</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<h1 class="text-center">Part Similarity Analysis</h1>
+
+<div class="row mt-3">
+    <!-- 🔹 Alle Artikel -->
+    <div class="col-md-4">
+        <h3><i class="bi bi-tag"></i> Available Parts</h3>
+        <ul class="list-group">
+            {% for part_id, details in products.items() %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <b>{{ details.name }}</b><br>
+                    <small>{{ details.desc }}</small>
+                </div>
+                <div class="input-group input-group-sm" style="width: 120px;">
+                    <button class="btn btn-primary" onclick="addToCompare('{{ part_id }}')">+</button>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <!-- 🔹 Vergleichsliste -->
+    <div class="col-md-4">
+        <h3><i class="bi bi-list-check"></i> Selected Parts</h3>
+        <ul id="compareList" class="list-group"></ul>
+    </div>
+
+    <!-- 🔹 Ähnlichste Artikel -->
+    <div class="col-md-4">
+        <h3><i class="bi bi-star"></i> Similar Parts</h3>
+        <ul id="similarParts" class="list-group"></ul>
+    </div>
+</div>
+
+<script>
+    function addToCompare(part_id) {
+        let compareList = JSON.parse(localStorage.getItem("compareList")) || [];
+        
+        if (!compareList.includes(part_id)) {
+            compareList.push(part_id);
+            localStorage.setItem("compareList", JSON.stringify(compareList));
+            updateCompareList();
+        }
+    }
+
+    function updateCompareList() {
+        let compareList = JSON.parse(localStorage.getItem("compareList")) || [];
+
+        fetch("/get_similar_parts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(compareList)
+        })
+        .then(response => response.json())
+        .then(data => {
+            let compareListElement = document.getElementById("compareList");
+            compareListElement.innerHTML = "";
+
+            // 🔹 Verarbeitung von selected_parts (jetzt eine Liste)
+            data.selected_parts.forEach(item => {
+                compareListElement.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <b>${item.part_id}</b><br>
+                            <small>${item.description}</small>
+                        </div>
+                        <button class="btn btn-danger btn-sm" onclick="removeFromCompare('${item.part_id}')">X</button>
+                    </li>`;
+            });
+
+            // 🔹 Ähnliche Artikel aktualisieren
+            let similarPartsElement = document.getElementById("similarParts");
+            similarPartsElement.innerHTML = "";
+
+            data.similar_parts.forEach(item => {
+                similarPartsElement.innerHTML += `
+                    <li class="list-group-item">
+                        <div>
+                            <b>${item.part_id}</b> (Score: ${item.score.toFixed(2)})<br>
+                            <small>${item.description}</small>
+                        </div>
+                    </li>`;
+            });
+        });
+    }
+
+    function removeFromCompare(part_id) {
+        let compareList = JSON.parse(localStorage.getItem("compareList")) || [];
+        compareList = compareList.filter(id => id !== part_id);
+        localStorage.setItem("compareList", JSON.stringify(compareList));
+        updateCompareList();
+    }
+
+    document.addEventListener("DOMContentLoaded", updateCompareList);
+</script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

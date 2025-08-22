@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ article_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+
+    <!-- 🔹 Headline mit Artikelbeschreibung -->
+    <h2 class="text-center">{{ article_name }}</h2>
+
+    <!-- 🔹 Bereich für das Bestandsbild -->
+    <div class="text-center mt-4">
+        {% if base64img_inventory %}
+            <img src="data:image/png;base64,{{ base64img_inventory }}" alt="Bestandsverlauf" class="img-fluid">
+        {% else %}
+            <p class="text-muted">Kein Bestandsbild verfügbar</p>
+        {% endif %}
+    </div>
+
+    <!-- 🔹 Bereich für das Kostenbild -->
+    <div class="text-center mt-4">
+        {% if base64img_cost %}
+            <img src="data:image/png;base64,{{ base64img_cost }}" alt="Kostenverlauf" class="img-fluid">
+        {% else %}
+            <p class="text-muted">Kein Kostenbild verfügbar</p>
+        {% endif %}
+    </div>
+
+    <!-- 🔹 Bereich für die Regressionsanalyse -->
+    <div class="text-center mt-4">
+        {% if base64img_regression %}
+            <img src="data:image/png;base64,{{ base64img_regression }}" alt="Regressionsanalyse" class="img-fluid">
+        {% else %}
+            <p class="text-muted">Keine Regressionsanalyse verfügbar</p>
+        {% endif %}
+    </div>
+
+</body>
+</html>

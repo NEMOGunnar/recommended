@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimierungs-Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <!-- 🔹 Hier das CSS für die rechtsbündige Darstellung -->
+        <style>
+            td.numeric {
+                text-align: right; /* Zahlen rechtsbündig */
+            }
+        </style>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+</head>
+<body class="container mt-4">
+
+    <h2 class="mb-4">Optimierungs-Tool</h2>
+
+
+    <!-- 📌 Formular für Eingaben -->
+    <form id="opt-form">
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="pur_process_cost" class="form-label">Prozesskosten (€)</label>
+                <input type="number" class="form-control" id="pur_process_cost" name="pur_process_cost" value="{{ config.pur_process_cost }}" required>
+            </div>
+            <div class="col-md-3">
+                <label for="profit_percent" class="form-label">Rendite (% p.a.)</label>
+                <input type="number" class="form-control" id="profit_percent" name="profit_percent" value="{{ config.profit_percent }}" required>
+            </div>
+            <div class="col-md-3">
+                <label for="time_period_days" class="form-label">Mittelungsperiode (Tage)</label>
+                <input type="number" class="form-control" id="time_period_days" name="time_period_days" value="{{ config.time_period_days }}" required>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Startdatum</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" value="{{ config.start_date }}" required>
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">Enddatum</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" value="{{ config.end_date }}" required>
+            </div>
+        </div>
+
+        <button id="submit-btn" class="btn btn-primary" onclick="showLoading()"> 
+            <span id="loading-spinner" class="spinner-border spinner-border-sm" role="status" style="display: none;"></span>
+            <span id="button-text">Berechnen</span>
+        </button>
+    </form>
+
+    <hr>
+
+    <!-- 📌 Bereich für die Grafik -->
+    <h3>Grafik</h3>
+    <img id="opt-plot" src="" alt="Optimierungs-Grafik" class="img-fluid mb-4" style="display:none;">
+
+    <!-- 📌 Filter Button -->
+    <button id="apply-filter" class="btn btn-secondary" style="display:none;">Filter anwenden</button>
+
+    <!-- 📌 Bereich für die Tabelle -->
+    <h3>Optimierungsergebnisse</h3>
+    <table id="opt-table" class="table table-striped">
+        <thead>
+            <tr>
+                <th>✅</th>
+                <th>Part ID</th>
+                <th>Part Description 1</th>
+                <th>Part Description 2</th>
+                <th>Part Description 3</th>
+                <th>Part Description 4</th>
+                <th>Bestellzykluszeit (Tage)</th>
+                <th>letzte Bestellzykluszeit (Tage)</th>
+                <th>Optimierungspotential (€)</th>
+                <th>Optimale Bestellmenge (Stk)</th>
+                <th>letzte Bestellmenge (Stk)</th>
+                <th>Einstandspreis im System (€)</th>
+                <th>Einstandspreis mit Lagerkosten (€)</th>
+                <th>Relative Teuerung mit Lagerkosten (%)</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody id="result-table"></tbody>
+    </table>
+
+    <script>
+
+
+        // 📌 Filter-Funktion für Part-IDs
+        $("#apply-filter").click(function() {
+            let selected_parts = [];
+            $(".part-checkbox:checked").each(function() {
+                selected_parts.push($(this).val());
+            });
+
+            $.post("/filter", { parts: selected_parts }, function(response) {
+                $("#opt-plot").attr("src", "data:image/png;base64," + response.img_base64).show();
+            });
+        });
+    function showLoading() {
+        document.getElementById("loading-spinner").style.display = "inline-block";
+        document.getElementById("button-text").innerText = " Wird geladen...";
+    };
+    $(document).ready(function() {
+        let submitBtn = $("#submit-btn");
+        let spinner = $("#loading-spinner");
+        let buttonText = $("#button-text");
+
+        // **DataTable initialisieren**
+        let table = $("#opt-table").DataTable({
+            "order": [[8, "desc"]],  // Standard: Optimierungspotential (€) absteigend sortieren
+            "destroy": true,         // Erlaubt Neuladen der Daten
+            "autoWidth": false,
+            "paging": true,
+            "searching": true,
+            "info": true,
+            "columnDefs": [
+                { "orderable": false, "targets": 0 },  // Checkbox-Spalte nicht sortierbar
+                { "className": "text-end", "targets": [6, 7, 8, 9, 10,11,12] } // Zahlen rechtsbündig formatieren
+            ]
+        });
+
+        // **Formular-Submit-Event**
+        $("#opt-form").submit(function(event) {
+            event.preventDefault();
+
+            // Button und Spinner aktivieren
+            submitBtn.prop("disabled", true);
+            spinner.show();
+            buttonText.text(" Wird geladen...");
+
+            // **Daten vom Server laden**
+            $.post("/", $(this).serialize(), function(response) {
+                $("#opt-plot").attr("src", "data:image/png;base64," + response.img_base64).show();
+                $("#apply-filter").show();
+
+                // **Tabelle leeren**
+                table.clear();
+
+                // **Prüfe, ob alle Spalten existieren**
+                response.table_data.forEach(row => {
+                    let rowData = [
+                        `<input type="checkbox" class="part-checkbox" value="${row["Part ID"]}">`,
+                        row["Part ID"] || "N/A",
+                        row["Part Description 1"] || "N/A",
+                        row["Part Description 2"] || "N/A",
+                        row["Part Description 3"] || "N/A",
+                        row["Part Description 4"] || "N/A",
+                        (row["Bestellzykluszeit in Tagen"] ? parseInt(row["Bestellzykluszeit in Tagen"]) : "0"),
+                        (row["letzte Bestellzykluszeit in Tagen"] ? parseInt(row["letzte Bestellzykluszeit in Tagen"]) : "0"),
+                        (row["Optimierungspotential in Euro"] ? parseFloat(row["Optimierungspotential in Euro"]).toFixed(2) : "0.00"),
+                        (row["Optimale Bestellmenge"] ? parseInt(row["Optimale Bestellmenge"]) : "0"),
+                        (row["letzte Bestellmenge"] ? parseInt(row["letzte Bestellmenge"]) : "0"),
+                        (row["Einstandspreis im System"] ? parseFloat(row["Einstandspreis im System"]).toFixed(2) : "0.00"),
+                        (row["Einstandspreis mit Lagerkosten"] ? parseFloat(row["Einstandspreis mit Lagerkosten"]).toFixed(2) : "0.00"),
+                        row["Relative Teuerung mit Lagerkosten"] || "0.00%",
+                        `<button class="btn btn-info btn-sm detail-btn" data-partid="${row["Part ID"]}">Detailanalyse</button>`
+                    ];
+                    let newRow = $("<tr>").append(rowData.map(cell => $("<td>").html(cell)));
+                    if (rowData.length === table.columns().count()) {
+                        table.row.add(rowData);
+                    } else {
+                        console.warn("🚨 Mismatch in Spaltenanzahl! Erwartet:", table.columns().count(), " Erhalten:", rowData.length);
+                    }
+                });
+
+                // **DataTable neu zeichnen**
+                table.draw();
+
+            }).always(function() {
+                // Button und Spinner zurücksetzen
+                submitBtn.prop("disabled", false);
+                spinner.hide();
+                buttonText.text("Berechnen");
+            });
+        });
+    });
+
+    // ✅ Event-Listener für den "Detailanalyse"-Button nachträglich hinzufügen
+    $(document).on("click", ".detail-btn", function() {
+    let partId = $(this).data("partid");
+    let url = "/part_details/" + partId;
+    window.open(url, "_blank"); // Öffnet die URL in einem neuen Tab
+    });
+    </script>
+
+</body>
+</html>
