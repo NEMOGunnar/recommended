@@ -4,6 +4,7 @@
 
 import logging
 from pathlib import Path
+from typing import Optional
 import pandas as pd
 
 from whitespot.symbols import DATADIR, FILENAME
@@ -16,16 +17,17 @@ class DataLoader:
         self.datadir = datadir
         self.filename = filename
 
-    def read(self, nrows: int = 5000) -> pd.DataFrame:
+    def read(self, nrows: Optional[int] = 5000) -> pd.DataFrame:
         """Read CSV.GZ, normalize types, aggregate duplicate lines per basket."""
         file_path = self.datadir / self.filename
+        _nrows = None if (nrows is None or nrows <= 0) else int(nrows)
         df = (
             pd.read_csv(
                 file_path,
                 compression="gzip",
                 sep=";",
                 encoding="utf-8",
-                nrows=nrows,
+                nrows=_nrows,
                 low_memory=False,
                 usecols=[
                     "PartDesc1","PartDesc2","PartDesc3","PartDesc4",
